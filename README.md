@@ -24,3 +24,4 @@
 ```
 
 ## Cubase Configuration
+![picture](https://github.com/i2make/MTC_SPP_Reader/blob/main/cubase.png)
