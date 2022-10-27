@@ -1,5 +1,5 @@
 # Midi Time Code(MTC) & Song Position Pointer(SPP) Reader  
-![picture](https://github.com/i2make/MTC_SPP_Reader/blob/main/pic2.jpg)
+![picture](https://github.com/i2make/MTC_SPP_Reader/blob/main/pic2.png)
 ## Using boards
 
 - Arduino Pro Micro x 1  
