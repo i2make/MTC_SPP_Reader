@@ -1,9 +1,9 @@
 # Midi Time Code(MTC) & Song Position Pointer(SPP) Reader
 ## Using boards
 
-- Arduino Pro Micro x 1
+- Arduino Pro Micro x 1  
 ![picture](https://github.com/i2make/MTC_SPP_Reader/blob/main/arduino_pro_micro.png)
-- MAX7219 8-digit 7-segment led x 2
+- MAX7219 8-digit 7-segment led x 2  
 ![picture](https://github.com/i2make/MTC_SPP_Reader/blob/main/max7219_7-segment.png)
 
 ## Dependencies
