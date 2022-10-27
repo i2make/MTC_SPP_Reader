@@ -13,8 +13,12 @@
 - MIDIUSB.h
 - LedControl.h
 
-## Install Dependencies
-
+## Install Dependencies  
+![picture](https://github.com/i2make/MTC_SPP_Reader/blob/main/lib.png)  
+- MIDIUSB.h
+![picture](https://github.com/i2make/MTC_SPP_Reader/blob/main/midiusb.png)  
+- LedControl.h
+![picture](https://github.com/i2make/MTC_SPP_Reader/blob/main/ledcontrol.png)  
 
 ## Compile
 
