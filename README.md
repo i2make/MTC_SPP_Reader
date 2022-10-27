@@ -23,7 +23,6 @@
 #define MAX7219_CS                  10
 #define MAX7219_DATA                16
 #define MAX7219_CLOCK               15
-#define MAX7219_DEVICE_NUMBER        2
 ```
 
 ## Cubase Configuration
