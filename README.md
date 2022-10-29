@@ -30,5 +30,6 @@
 #define MAX7219_CLOCK               15
 ```
 
-## Cubase Configuration
+## Cubase Configuration  
+menu Transport
 ![picture](https://github.com/i2make/MTC_SPP_Reader/blob/main/cubase.png)
