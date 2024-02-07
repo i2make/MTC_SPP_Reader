@@ -20,7 +20,7 @@ midiEventPacket_t rx; // Midi Read
 
 // Song Position Pointer(SPP)
 unsigned int sixteens;
-unsigned int bars;
+int bars;
 unsigned char quarters;
 unsigned int sixteen;
 int ppqn;
@@ -83,6 +83,15 @@ void displaySPP() {
     quarters = (sixteens % 16) / 4 + 1;
     sixteen = (sixteens % 16) % 4 + 1;
     switch (bars) {
+        case -9 ... -1:
+            displayString = "  " + String(bars);
+            break;
+        case -99 ... -10:
+            displayString = " " + String(bars);
+            break;
+        case -999 ... -100:
+            displayString = String(bars);
+            break;
         case 0 ... 9:
             displayString = "   " + String(bars);
             break;
@@ -105,95 +114,136 @@ void displaySPP() {
 }
 
 void midiReadSPP() {
-    if (rx.byte1 == 0xF2) {
+    if (rx.byte1 == 0xF2) { // position jump
         sixteens = rx.byte3 * 128 + rx.byte2; // total sixteens
         displaySPP();
     }
-    if (rx.byte1 == 0xF8) {
+    if (rx.byte1 == 0xF8) { // position moving
         ppqn++;
         if (ppqn > 5) {
-            sixteens++; // add total sixteens
+            sixteens++;     // add total sixteens
             displaySPP();
             ppqn = 0;
         }
     }
 }
 
+void displayMTC() {
+    switch (m) { /// display minutes
+        case 0 ... 9:
+            displayString = String(" ") + m;
+            break;
+        case 10 ... 99:
+            displayString = m;
+            break;
+        default:
+            break;
+    } //switch
+
+    switch (s) { /// display seconds
+        case 0 ... 9:
+            displayString += String("  ") + s;
+            break;
+        case 10 ... 99:
+            displayString += String(" ") + s;
+            break;
+        default:
+            break;
+    } //switch
+
+    switch (f) { /// display frames
+        case 0 ... 9:
+            displayString += String("  ") + f;
+            break;
+        case 10 ... 99:
+            displayString += String(" ") + f;
+            break;
+        default:
+            break;
+    } //switch
+
+    // frameType = tc[7] & 0x06;   // 0000 0110
+    // // 0=24fps, 2=25fps, 4=30(df)fps, 6=30fps
+    // switch (frameType) {
+    //     case F24:
+    //         displayString = "24 fps";
+    //         break;
+    //     case F25:
+    //         displayString = "25 fps";
+    //         break;
+    //     case F30DF:
+    //         displayString = "30df fps";
+    //         break;
+    //     case F30:
+    //         displayString = "30 fps";
+    //         break;
+    //     default:
+    //         displayString = "Error";
+    //         break;
+    // }
+
+    for (int i = 0; i < 8; i++) {
+        char temp = displayString.charAt(i);
+        lc.setChar(MTC_LED_NUMBER, 7 - i, temp, false);
+    }
+}
+
 void midiReadMTC() {
     ///////////////////////////////////////
-    /// MTC data
+    /// <MTC data>
+    /// https://web.archive.org/web/20120212181214/http://home.roadrunner.com/~jgglatt/tech/mtc.htm
+    ///
+    /// <Quarter Frame>
+    /// index               value
+    ///     0       Current Frames   Low Nibble
+    ///     1       Current Frames  High Nibble
+    ///     2       Current Seconds  Low Nibble
+    ///     3       Current Seconds High Nibble
+    ///     4       Current Minutes  Low Nibble
+    ///     5       Current Minutes High Nibble
+    ///     6       Current Hours    Low Nibble
+    ///     7       Current Hours   High Nibble and SMPTE Type
+    ///
     /// rx.byte1   rx.byte2
     /// 0xF1       data (x000 0000)
     ///                    ^    ^
     ///               indices  data
     ///                0 ~ 7
+    ///
+    /// <Full Frame>
+    /// SysEx: F0 7F cc 01 01 hr mn sc fr F7
+    /// cc: SysEx channel
+    /// hr, mn, sc, fr: one message of time (in hex)
+    /// 
     ///////////////////////////////////////
+    
+
+    // Full Frame Read
+    if (rx.byte1 == 0xF0 && rx.byte2 == 0x7F) { // SysEx
+        rx = MidiUSB.read();
+        //h = rx.byte3;      // hr
+        rx = MidiUSB.read();
+        m = rx.byte1;      // mn
+        s = rx.byte2;      // sc
+        f = rx.byte3;      // fr
+        rx = MidiUSB.read();    // 0xF7
+        
+        displayMTC();
+        return;
+    }
+
+    // Quarter Frame Read
     if (rx.byte1 == 0xF1) {
         int indices = (rx.byte2 & 0xF0) >> 4;   // indices, storing high 4-digit
-        tc[indices] = rx.byte2 & 0x0F;          //    data, storing low 4-digit
+        tc[indices] = rx.byte2 & 0x0F;          //    data, storing  low 4-digit
 
         if (indices == 7) {
             //h = (tc[7] & 0x01) * 16 + tc[6];
             m = tc[5] * 16 + tc[4];
             s = tc[3] * 16 + tc[2];
             f = tc[1] * 16 + tc[0];
-
-            switch (m) { /// display minutes
-                case 0 ... 9:
-                    displayString = String(" ") + m;
-                    break;
-                case 10 ... 99:
-                    displayString = m;
-                    break;
-                default:
-                    break;
-            } //switch
-
-            switch (s) { /// display seconds
-                case 0 ... 9:
-                    displayString += String("  ") + s;
-                    break;
-                case 10 ... 99:
-                    displayString += String(" ") + s;
-                    break;
-                default:
-                    break;
-            } //switch
-
-            switch (f) { /// display frames
-                case 0 ... 9:
-                    displayString += String("  ") + f;
-                    break;
-                case 10 ... 99:
-                    displayString += String(" ") + f;
-                    break;
-                default:
-                    break;
-            } //switch
-
-//                    frameType = tc[7] & 0x06;   // 0000 0110
-//                    // 0=24fps, 2=25fps, 4=30(df)fps, 6=30fps
-//                    switch (frameType) {
-//                        case F24:
-//                            displayString = "24 fps";
-//                            break;
-//                        case F25:
-//                            displayString = "25 fps";
-//                            break;
-//                        case F30DF:
-//                            displayString = "30df fps";
-//                            break;
-//                        case F30:
-//                            displayString = "30 fps";
-//                            break;
-//                        default:
-//                            displayString = "Error";
-//                            break;
-//                    }
-            for (int i = 0; i < 8; i++) {
-                char temp = displayString.charAt(i);
-                lc.setChar(MTC_LED_NUMBER, 7 - i, temp, false);
-            }
         } // if(indices == 7)
+
+        displayMTC();
     } //if 0xF1
 }
