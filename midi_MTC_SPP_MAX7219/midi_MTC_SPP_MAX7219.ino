@@ -1,6 +1,9 @@
 #include <MIDIUSB.h>
 #include "LedControl.h" // https://github.com/wayoda/LedControl
 
+#define MTC_FRAME_F                 30  // 30 frame (or 24, 25)
+#define MTC_S_OFFSET                 0  // MTC time offset (-60 ~ 60 sec)
+
 #define MAX7219_CS                  10
 #define MAX7219_DATA                16
 #define MAX7219_CLOCK               15
@@ -29,18 +32,17 @@ int ppqn;
 enum {
     F24 = 0, F25 = 2, F30DF = 4, F30 = 6
 }; // Frames type
-unsigned char h, m, s, f;      // hour, minutes, seconds, frames time code
-unsigned char frameType;       // speed of MTC : 24fps / 25fps / 30 drop frame / 30 fps
-unsigned char tc[7];          // array to old timecode
+signed char h, m, s, f;     // hour, minutes, seconds, frames time code
+unsigned char frameType;    // speed of MTC : 24fps / 25fps / 30 drop frame / 30 fps
+unsigned char tc[7];        // array to old timecode
+int mtc_total_sec;
 
 // Hardware SPI setting
 LedControl lc(MAX7219_DATA, MAX7219_CLOCK, MAX7219_CS, MAX7219_DEVICE_NUMBER);
 
 // functions
 void displayStartingMessage();
-
 void midiReadSPP();
-
 void midiReadMTC();
 
 
@@ -128,9 +130,30 @@ void midiReadSPP() {
     }
 }
 
+void mtcOffset() {
+    mtc_total_sec = m * 60 + s + MTC_S_OFFSET;
+    m = int(mtc_total_sec / 60.);
+    s = mtc_total_sec % 60;
+    if (mtc_total_sec < 0) f = MTC_FRAME_F - f;    
+}
+
 void displayMTC() {
+    // switch (h) { /// display hours
+    //     case 0 ... 9:
+    //         break;
+    //     case 10 ... 99:
+    //         break;
+    //     default:
+    //         break;
+    // } //switch
+
     switch (m) { /// display minutes
         case 0 ... 9:
+            if (mtc_total_sec < 0)
+            {
+                displayString = String("-") + m;
+                break;
+            }
             displayString = String(" ") + m;
             break;
         case 10 ... 99:
@@ -141,6 +164,12 @@ void displayMTC() {
     } //switch
 
     switch (s) { /// display seconds
+        case -99 ... -10:
+            displayString += String(" ") + abs(s);
+            break;
+        case -9 ... -1:
+            displayString += String("  ") + abs(s);
+            break;            
         case 0 ... 9:
             displayString += String("  ") + s;
             break;
@@ -216,18 +245,18 @@ void midiReadMTC() {
     /// hr, mn, sc, fr: one message of time (in hex)
     /// 
     ///////////////////////////////////////
-    
 
     // Full Frame Read
     if (rx.byte1 == 0xF0 && rx.byte2 == 0x7F) { // SysEx
         rx = MidiUSB.read();
         //h = rx.byte3;      // hr
         rx = MidiUSB.read();
-        m = rx.byte1;      // mn
-        s = rx.byte2;      // sc
-        f = rx.byte3;      // fr
+        m = rx.byte1;      // minutes
+        s = rx.byte2;      // seconds
+        f = rx.byte3;      // frames
         rx = MidiUSB.read();    // 0xF7
-        
+
+        mtcOffset();
         displayMTC();
         return;
     }
@@ -237,11 +266,13 @@ void midiReadMTC() {
         int indices = (rx.byte2 & 0xF0) >> 4;   // indices, storing high 4-digit
         tc[indices] = rx.byte2 & 0x0F;          //    data, storing  low 4-digit
 
-        if (indices == 7) {
+        if (indices == 7) {                     // received all data
             //h = (tc[7] & 0x01) * 16 + tc[6];
             m = tc[5] * 16 + tc[4];
             s = tc[3] * 16 + tc[2];
             f = tc[1] * 16 + tc[0];
+
+            mtcOffset();
         } // if(indices == 7)
 
         displayMTC();
