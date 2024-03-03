@@ -2,7 +2,11 @@
 #include "LedControl.h" // https://github.com/wayoda/LedControl
 
 #define MTC_FRAME_F                 30  // 30 frame (or 24, 25)
-#define MTC_S_OFFSET                 0  // MTC time offset (-60 ~ 60 sec)
+
+typedef enum {STANDARD, NEGATIVE} mtc_display_mode;
+
+#define MTC_DISPLAY_MODE      NEGATIVE  // STANDARD: 00:00:00 ~ 23:59:59
+                                        // NEGATIVE: -1:00:00 ~ 22:59:59
 
 #define MAX7219_CS                  10
 #define MAX7219_DATA                16
@@ -130,90 +134,173 @@ void midiReadSPP() {
     }
 }
 
-void mtcOffset() {
-    mtc_total_sec = m * 60 + s + MTC_S_OFFSET;
+void mtcNegativeDisplay() {
+    mtc_total_sec = m * 60 + s;
+    if (h == 23) {
+        mtc_total_sec -= 3600;        
+    }
     m = int(mtc_total_sec / 60.);
     s = mtc_total_sec % 60;
-    if (mtc_total_sec < 0) f = MTC_FRAME_F - f;    
+    // if (mtc_total_sec < 0) f = MTC_FRAME_F - f;
 }
 
 void displayMTC() {
-    // switch (h) { /// display hours
-    //     case 0 ... 9:
-    //         break;
-    //     case 10 ... 99:
-    //         break;
-    //     default:
-    //         break;
-    // } //switch
+    if (MTC_DISPLAY_MODE == STANDARD) {
+        // switch (h) { /// display hours
+        //     case 0 ... 9:
+        //         displayString = String(" ") + h;
+        //         break;
+        //     case 10 ... 99:
+        //         displayString = String("") + h;
+        //         break;
+        //     default:
+        //         break;
+        // } //switch
 
-    switch (m) { /// display minutes
-        case 0 ... 9:
-            if (mtc_total_sec < 0)
-            {
-                displayString = String("-") + m;
+        switch (m) { /// display minutes
+            case 0 ... 9:
+                displayString = String(" ") + m;
                 break;
-            }
-            displayString = String(" ") + m;
-            break;
-        case 10 ... 99:
-            displayString = m;
-            break;
-        default:
-            break;
-    } //switch
+            case 10 ... 99:
+                displayString = m;
+                break;
+            default:
+                break;
+        } //switch
 
-    switch (s) { /// display seconds
-        case -99 ... -10:
-            displayString += String(" ") + abs(s);
-            break;
-        case -9 ... -1:
-            displayString += String("  ") + abs(s);
-            break;            
-        case 0 ... 9:
-            displayString += String("  ") + s;
-            break;
-        case 10 ... 99:
-            displayString += String(" ") + s;
-            break;
-        default:
-            break;
-    } //switch
+        switch (s) { /// display seconds
+            case 0 ... 9:
+                displayString += String("  ") + s;
+                break;
+            case 10 ... 99:
+                displayString += String(" ") + s;
+                break;
+            default:
+                break;
+        } //switch
 
-    switch (f) { /// display frames
-        case 0 ... 9:
-            displayString += String("  ") + f;
-            break;
-        case 10 ... 99:
-            displayString += String(" ") + f;
-            break;
-        default:
-            break;
-    } //switch
+        switch (f) { /// display frames
+            case 0 ... 9:
+                displayString += String("  ") + f;
+                break;
+            case 10 ... 99:
+                displayString += String(" ") + f;
+                break;
+            default:
+                break;
+        } //switch
 
-    // frameType = tc[7] & 0x06;   // 0000 0110
-    // // 0=24fps, 2=25fps, 4=30(df)fps, 6=30fps
-    // switch (frameType) {
-    //     case F24:
-    //         displayString = "24 fps";
-    //         break;
-    //     case F25:
-    //         displayString = "25 fps";
-    //         break;
-    //     case F30DF:
-    //         displayString = "30df fps";
-    //         break;
-    //     case F30:
-    //         displayString = "30 fps";
-    //         break;
-    //     default:
-    //         displayString = "Error";
-    //         break;
-    // }
+        // frameType = tc[7] & 0x06;   // 0000 0110
+        // // 0=24fps, 2=25fps, 4=30(df)fps, 6=30fps
+        // switch (frameType) {
+        //     case F24:
+        //         displayString = "24 fps";
+        //         break;
+        //     case F25:
+        //         displayString = "25 fps";
+        //         break;
+        //     case F30DF:
+        //         displayString = "30df fps";
+        //         break;
+        //     case F30:
+        //         displayString = "30 fps";
+        //         break;
+        //     default:
+        //         displayString = "Error";
+        //         break;
+        // }
+        for (int i = 0; i < 8; i++) {
+            char temp = displayString.charAt(i);
+            lc.setChar(MTC_LED_NUMBER, 7 - i, temp, false);
+        }
+    }
 
-    for (int i = 0; i < 8; i++) {
-        char temp = displayString.charAt(i);
-        lc.setChar(MTC_LED_NUMBER, 7 - i, temp, false);
+    if (MTC_DISPLAY_MODE == NEGATIVE) {
+        // switch (h) { /// display hours
+        //     case 0 ... 9:
+        //         displayString = String(" ") + h;
+        //         break;
+        //     case 10 ... 99:
+        //         displayString = String("") + h;
+        //         break;
+        //     default:
+        //         break;
+        // } //switch
+
+
+        switch (m) { /// display minutes
+            case -99 ... -10:
+                displayString = abs(m);
+                break;
+            case -9 ... -1:
+                displayString = m;
+                break;            
+            case 0 ... 9:
+                if (s < 0) {
+                    displayString = String("-") + m;
+                } else {
+                    displayString = String(" ") + m;                    
+                }
+                break;
+            case 10 ... 99:
+                displayString = m;
+                break;
+            default:
+                break;
+        } //switch
+
+        switch (s) { /// display seconds
+            case -99 ... -10:
+                displayString += String(" ") + abs(s);
+                break;
+            case -9 ... -1:
+                displayString += String("  ") + abs(s);
+                break;            
+            case 0 ... 9:
+                displayString += String("  ") + s;
+                break;
+            case 10 ... 99:
+                displayString += String(" ") + s;
+                break;
+            default:
+                break;
+        } //switch
+
+        switch (f) { /// display frames
+            case 0 ... 9:
+                displayString += String("  ") + f;
+                break;
+            case 10 ... 99:
+                displayString += String(" ") + f;
+                break;
+            default:
+                break;
+        } //switch
+
+        // frameType = tc[7] & 0x06;   // 0000 0110
+        // // 0=24fps, 2=25fps, 4=30(df)fps, 6=30fps
+        // switch (frameType) {
+        //     case F24:
+        //         displayString = "24 fps";
+        //         break;
+        //     case F25:
+        //         displayString = "25 fps";
+        //         break;
+        //     case F30DF:
+        //         displayString = "30df fps";
+        //         break;
+        //     case F30:
+        //         displayString = "30 fps";
+        //         break;
+        //     default:
+        //         displayString = "Error";
+        //         break;
+        // }
+
+        for (int i = 0; i < 8; i++) {
+            char temp = displayString.charAt(i);
+            lc.setChar(MTC_LED_NUMBER, 7 - i, temp, false);
+        }
     }
 }
 
@@ -243,20 +330,23 @@ void midiReadMTC() {
     /// SysEx: F0 7F cc 01 01 hr mn sc fr F7
     /// cc: SysEx channel
     /// hr, mn, sc, fr: one message of time (in hex)
-    /// 
+    /// % hr include SMPTE type
     ///////////////////////////////////////
 
     // Full Frame Read
     if (rx.byte1 == 0xF0 && rx.byte2 == 0x7F) { // SysEx
         rx = MidiUSB.read();
-        //h = rx.byte3;      // hr
+        h = rx.byte3;           // SMPTE type + hours
+        h = h & 0b00011111;     // capture only hours
         rx = MidiUSB.read();
-        m = rx.byte1;      // minutes
-        s = rx.byte2;      // seconds
-        f = rx.byte3;      // frames
+        m = rx.byte1;           // minutes
+        s = rx.byte2;           // seconds
+        f = rx.byte3;           // frames
         rx = MidiUSB.read();    // 0xF7
 
-        mtcOffset();
+        if (MTC_DISPLAY_MODE == NEGATIVE) {
+            mtcNegativeDisplay();            
+        }
         displayMTC();
         return;
     }
@@ -267,12 +357,14 @@ void midiReadMTC() {
         tc[indices] = rx.byte2 & 0x0F;          //    data, storing  low 4-digit
 
         if (indices == 7) {                     // received all data
-            //h = (tc[7] & 0x01) * 16 + tc[6];
+            h = (tc[7] & 0x01) * 16 + tc[6];
             m = tc[5] * 16 + tc[4];
             s = tc[3] * 16 + tc[2];
             f = tc[1] * 16 + tc[0];
 
-            mtcOffset();
+            if (MTC_DISPLAY_MODE == NEGATIVE) {
+                mtcNegativeDisplay();                
+            }
         } // if(indices == 7)
 
         displayMTC();
