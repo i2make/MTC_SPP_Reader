@@ -38,7 +38,7 @@ enum {
 }; // Frames type
 signed char h, m, s, f;     // hour, minutes, seconds, frames time code
 unsigned char frameType;    // speed of MTC : 24fps / 25fps / 30 drop frame / 30 fps
-unsigned char tc[7];        // array to old timecode
+unsigned char tc[8];        // array to old timecode
 int mtc_total_sec;
 
 // Hardware SPI setting
